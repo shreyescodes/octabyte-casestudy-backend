@@ -219,4 +219,3 @@ class GoogleFinanceService {
 }
 exports.googleFinanceService = new GoogleFinanceService();
 exports.default = exports.googleFinanceService;
-//# sourceMappingURL=googleFinanceService.js.map

@@ -93,4 +93,3 @@ app.get('/', (req, res) => {
 app.use(errorHandler_1.notFoundHandler);
 app.use(errorHandler_1.errorHandler);
 exports.default = app;
-//# sourceMappingURL=app.js.map

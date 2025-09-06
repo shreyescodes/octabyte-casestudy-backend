@@ -198,4 +198,3 @@ class StockService {
     }
 }
 exports.StockService = StockService;
-//# sourceMappingURL=stockService.js.map

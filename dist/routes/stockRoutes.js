@@ -14,4 +14,3 @@ router.put('/:id', stockController_1.default.updateStock);
 router.delete('/:id', stockController_1.default.deleteStock);
 router.post('/:id/refresh', stockController_1.default.refreshStockData);
 exports.default = router;
-//# sourceMappingURL=stockRoutes.js.map

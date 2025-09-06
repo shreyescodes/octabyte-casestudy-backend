@@ -216,4 +216,3 @@ class RealTimeDataService {
 }
 exports.realTimeDataService = new RealTimeDataService();
 exports.default = exports.realTimeDataService;
-//# sourceMappingURL=realTimeDataService.js.map

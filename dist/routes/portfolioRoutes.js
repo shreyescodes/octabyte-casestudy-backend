@@ -12,4 +12,3 @@ router.get('/sectors', portfolioController_1.default.getSectorSummary);
 router.get('/metrics', portfolioController_1.default.getPortfolioMetrics);
 router.put('/prices', portfolioController_1.default.updateAllStockPrices);
 exports.default = router;
-//# sourceMappingURL=portfolioRoutes.js.map

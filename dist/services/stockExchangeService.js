@@ -292,4 +292,3 @@ class StockExchangeService {
 }
 exports.stockExchangeService = new StockExchangeService();
 exports.default = exports.stockExchangeService;
-//# sourceMappingURL=stockExchangeService.js.map

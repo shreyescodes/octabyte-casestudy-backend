@@ -365,4 +365,3 @@ class MarketController {
     }
 }
 exports.MarketController = MarketController;
-//# sourceMappingURL=marketController.js.map

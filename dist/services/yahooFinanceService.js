@@ -166,4 +166,3 @@ class YahooFinanceService {
 }
 exports.yahooFinanceService = new YahooFinanceService();
 exports.default = exports.yahooFinanceService;
-//# sourceMappingURL=yahooFinanceService.js.map

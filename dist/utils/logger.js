@@ -109,4 +109,3 @@ const logMarketData = (symbol, source, success, data) => {
 };
 exports.logMarketData = logMarketData;
 exports.default = exports.logger;
-//# sourceMappingURL=logger.js.map

@@ -25,4 +25,3 @@ async function runMigration() {
     }
 }
 runMigration();
-//# sourceMappingURL=migrate.js.map

@@ -194,4 +194,3 @@ exports.PriceUpdateService = PriceUpdateService;
 exports.priceUpdateService = new PriceUpdateService();
 exports.priceUpdateService.startAutoUpdate();
 exports.default = exports.priceUpdateService;
-//# sourceMappingURL=priceUpdateService.js.map

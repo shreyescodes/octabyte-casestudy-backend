@@ -230,4 +230,3 @@ setInterval(() => {
     marketDataService['cleanupCache']();
 }, 10 * 60 * 1000);
 exports.default = marketDataService;
-//# sourceMappingURL=marketDataService.js.map

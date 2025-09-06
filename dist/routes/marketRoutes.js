@@ -14,4 +14,3 @@ router.post('/update', marketController_1.MarketController.updateAllPrices);
 router.post('/update/:stockId', marketController_1.MarketController.updateStockPrice);
 router.get('/popular', marketController_1.MarketController.getPopularStocks);
 exports.default = router;
-//# sourceMappingURL=marketRoutes.js.map

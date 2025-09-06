@@ -168,4 +168,3 @@ async function seedDatabase() {
     }
 }
 seedDatabase();
-//# sourceMappingURL=seed.js.map

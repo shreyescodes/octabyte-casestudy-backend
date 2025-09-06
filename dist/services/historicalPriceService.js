@@ -138,4 +138,3 @@ class HistoricalPriceService {
 }
 exports.historicalPriceService = new HistoricalPriceService();
 exports.default = exports.historicalPriceService;
-//# sourceMappingURL=historicalPriceService.js.map

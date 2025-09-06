@@ -486,4 +486,3 @@ class StockController {
     }
 }
 exports.default = StockController;
-//# sourceMappingURL=stockController.js.map
