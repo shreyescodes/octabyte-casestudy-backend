@@ -27,6 +27,31 @@ class YahooFinanceService {
             return null;
         }
     }
+    async getHistoricalPrice(symbol, monthsAgo = 4) {
+        try {
+            logger_1.logger.info(`Fetching historical price for ${symbol} from ${monthsAgo} months ago`);
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setMonth(startDate.getMonth() - monthsAgo);
+            const historicalData = await yahoo_finance2_1.default.historical(symbol, {
+                period1: startDate,
+                period2: endDate,
+                interval: '1d'
+            });
+            if (historicalData && historicalData.length > 0) {
+                const middleIndex = Math.floor(historicalData.length / 2);
+                const historicalPrice = historicalData[middleIndex].close;
+                logger_1.logger.info(`Historical price for ${symbol} (${monthsAgo} months ago): $${historicalPrice}`);
+                return historicalPrice;
+            }
+            logger_1.logger.warn(`No historical data found for ${symbol}`);
+            return null;
+        }
+        catch (error) {
+            logger_1.logger.error(`Error fetching historical price for ${symbol}:`, error);
+            return null;
+        }
+    }
     async getMarketData(symbol) {
         try {
             logger_1.logger.info(`Fetching market data for ${symbol} from Yahoo Finance`);
@@ -35,11 +60,26 @@ class YahooFinanceService {
                 logger_1.logger.warn(`No market data found for ${symbol} on Yahoo Finance`);
                 return null;
             }
+            let latestEarnings;
+            if (quote.epsTrailingTwelveMonths) {
+                latestEarnings = quote.epsTrailingTwelveMonths;
+            }
+            else if (quote.epsForward) {
+                latestEarnings = quote.epsForward;
+            }
+            else if (quote.earningsPerShare) {
+                latestEarnings = quote.earningsPerShare;
+            }
+            else if (quote.epsCurrentYear) {
+                latestEarnings = quote.epsCurrentYear;
+            }
             const marketData = {
                 symbol,
                 currentPrice: quote.regularMarketPrice,
-                peRatio: quote.trailingPE || undefined,
-                latestEarnings: quote.earningsPerShare || undefined,
+                peRatio: quote.trailingPE || quote.forwardPE || undefined,
+                latestEarnings: latestEarnings,
+                change: quote.regularMarketChange || undefined,
+                changePercent: quote.regularMarketChangePercent || undefined,
                 lastUpdated: new Date().toISOString(),
                 source: 'yahoo'
             };

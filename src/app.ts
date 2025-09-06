@@ -6,8 +6,10 @@ import dotenv from 'dotenv';
 
 import stockRoutes from './routes/stockRoutes';
 import portfolioRoutes from './routes/portfolioRoutes';
+import marketRoutes from './routes/marketRoutes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import Database from './config/database';
+import './services/priceUpdateService'; // Start price update service
 
 // Load environment variables
 dotenv.config();
@@ -60,6 +62,7 @@ app.get('/health', async (req, res) => {
 // API routes
 app.use('/api/stocks', stockRoutes);
 app.use('/api/portfolio', portfolioRoutes);
+app.use('/api/market', marketRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -70,6 +73,7 @@ app.get('/', (req, res) => {
     endpoints: {
       stocks: '/api/stocks',
       portfolio: '/api/portfolio',
+      market: '/api/market',
       health: '/health'
     }
   });

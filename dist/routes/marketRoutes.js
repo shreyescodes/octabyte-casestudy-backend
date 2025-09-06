@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const marketController_1 = require("../controllers/marketController");
+const router = (0, express_1.Router)();
+router.get('/search', marketController_1.MarketController.searchStock);
+router.get('/browse', marketController_1.MarketController.browseStocks);
+router.get('/suggestions', marketController_1.MarketController.getPopularStocks);
+router.get('/info', marketController_1.MarketController.getMarketInfo);
+router.get('/status', marketController_1.MarketController.getServiceStatus);
+router.get('/price/:symbol', marketController_1.MarketController.getCurrentPrice);
+router.get('/data/:symbol', marketController_1.MarketController.getMarketData);
+router.post('/update', marketController_1.MarketController.updateAllPrices);
+router.post('/update/:stockId', marketController_1.MarketController.updateStockPrice);
+router.get('/popular', marketController_1.MarketController.getPopularStocks);
+exports.default = router;
+//# sourceMappingURL=marketRoutes.js.map

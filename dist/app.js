@@ -10,8 +10,10 @@ const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const stockRoutes_1 = __importDefault(require("./routes/stockRoutes"));
 const portfolioRoutes_1 = __importDefault(require("./routes/portfolioRoutes"));
+const marketRoutes_1 = __importDefault(require("./routes/marketRoutes"));
 const errorHandler_1 = require("./middleware/errorHandler");
 const database_1 = __importDefault(require("./config/database"));
+require("./services/priceUpdateService");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use((0, helmet_1.default)());
@@ -50,6 +52,7 @@ app.get('/health', async (req, res) => {
 });
 app.use('/api/stocks', stockRoutes_1.default);
 app.use('/api/portfolio', portfolioRoutes_1.default);
+app.use('/api/market', marketRoutes_1.default);
 app.get('/', (req, res) => {
     res.json({
         success: true,
@@ -58,6 +61,7 @@ app.get('/', (req, res) => {
         endpoints: {
             stocks: '/api/stocks',
             portfolio: '/api/portfolio',
+            market: '/api/market',
             health: '/health'
         }
     });

@@ -60,16 +60,5 @@ CREATE TRIGGER update_stocks_updated_at
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
--- Insert default sectors
-INSERT INTO sectors (name, description) VALUES
-    ('Technology', 'Technology and software companies'),
-    ('Healthcare', 'Healthcare and pharmaceutical companies'),
-    ('Finance', 'Banking and financial services'),
-    ('Energy', 'Oil, gas, and renewable energy companies'),
-    ('Consumer Goods', 'Consumer products and retail'),
-    ('Industrials', 'Manufacturing and industrial companies'),
-    ('Real Estate', 'Real estate and property companies'),
-    ('Utilities', 'Utility and infrastructure companies'),
-    ('Materials', 'Mining and materials companies'),
-    ('Telecommunications', 'Telecom and communication services')
-ON CONFLICT (name) DO NOTHING;
+-- Sectors will be dynamically populated when stocks are added
+-- No hardcoded sector insertions - sectors are created dynamically based on stock data

@@ -38,6 +38,8 @@ export interface StockUpdateRequest {
 export interface MarketData {
     symbol: string;
     currentPrice: number;
+    change?: number;
+    changePercent?: number;
     peRatio?: number;
     latestEarnings?: number;
     lastUpdated: string;

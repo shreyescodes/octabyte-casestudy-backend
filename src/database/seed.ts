@@ -1,87 +1,126 @@
 import Database from '../config/database';
+import { realTimeDataService } from '../services/realTimeDataService';
+import { logger } from '../utils/logger';
 
-const sampleStocks = [
+// Dynamic sample stocks - completely dynamic, market data and purchase prices fetched live
+const sampleStockSymbols = [
   {
+    symbol: "RELIANCE",
     stockName: "Reliance Industries Ltd",
-    purchasePrice: 2450.00,
     quantity: 10,
-    investment: 24500.00,
     stockExchangeCode: "NSE",
-    currentMarketPrice: 2650.00,
-    presentValue: 26500.00,
-    gainLoss: 2000.00,
-    peRatio: 12.5,
-    latestEarnings: 15234.00,
     sector: "Energy"
   },
   {
+    symbol: "TCS",
     stockName: "Tata Consultancy Services Ltd",
-    purchasePrice: 3200.00,
     quantity: 8,
-    investment: 25600.00,
     stockExchangeCode: "NSE",
-    currentMarketPrice: 3450.00,
-    presentValue: 27600.00,
-    gainLoss: 2000.00,
-    peRatio: 28.3,
-    latestEarnings: 9478.00,
     sector: "Technology"
   },
   {
+    symbol: "HDFCBANK",
     stockName: "HDFC Bank Ltd",
-    purchasePrice: 1580.00,
     quantity: 15,
-    investment: 23700.00,
     stockExchangeCode: "NSE",
-    currentMarketPrice: 1620.00,
-    presentValue: 24300.00,
-    gainLoss: 600.00,
-    peRatio: 18.7,
-    latestEarnings: 8968.00,
     sector: "Finance"
   },
   {
+    symbol: "INFY",
     stockName: "Infosys Ltd",
-    purchasePrice: 1420.00,
     quantity: 12,
-    investment: 17040.00,
     stockExchangeCode: "NSE",
-    currentMarketPrice: 1380.00,
-    presentValue: 16560.00,
-    gainLoss: -480.00,
-    peRatio: 24.1,
-    latestEarnings: 6586.00,
     sector: "Technology"
   },
   {
+    symbol: "ITC",
     stockName: "ITC Ltd",
-    purchasePrice: 410.00,
     quantity: 50,
-    investment: 20500.00,
     stockExchangeCode: "NSE",
-    currentMarketPrice: 395.00,
-    presentValue: 19750.00,
-    gainLoss: -750.00,
-    peRatio: 15.8,
-    latestEarnings: 4512.00,
     sector: "Consumer Goods"
   }
 ];
 
 async function seedDatabase() {
   try {
-    console.log('Starting database seeding...');
+    console.log('Starting database seeding with live market data...');
 
     // Clear existing data
     await Database.query('DELETE FROM stocks');
     await Database.query('DELETE FROM portfolio_snapshots');
 
-    // Calculate portfolio percentages
-    const totalInvestment = sampleStocks.reduce((sum, stock) => sum + stock.investment, 0);
+    console.log('🔄 Fetching live market data for sample stocks...');
+    
+    const stocksWithLiveData = [];
+    let totalInvestment = 0;
+    let totalPresentValue = 0;
+    let totalGainLoss = 0;
 
-    // Insert sample stocks with calculated portfolio percentages
-    for (const stock of sampleStocks) {
-      const portfolioPercentage = (stock.investment / totalInvestment) * 100;
+    // Fetch REAL-TIME market data with realistic purchase scenarios
+    console.log('🔴 Fetching LIVE real-time market data...');
+    
+    const realTimeStockData = await realTimeDataService.getBatchRealTimeData(
+      sampleStockSymbols.map(stock => ({
+        symbol: stock.symbol,
+        stockName: stock.stockName,
+        exchange: stock.stockExchangeCode
+      }))
+    );
+
+    // Process each stock with real-time data
+    for (const realTimeData of realTimeStockData) {
+      console.log(`📊 Processing ${realTimeData.stockName} (${realTimeData.symbol})...`);
+      
+      try {
+        // Find the corresponding stock info
+        const stockInfo = sampleStockSymbols.find(s => s.symbol === realTimeData.symbol);
+        if (!stockInfo) continue;
+
+        // Calculate derived values with real-time data
+        const investment = realTimeData.purchasePrice * stockInfo.quantity;
+        const presentValue = realTimeData.currentPrice * stockInfo.quantity;
+        const gainLoss = presentValue - investment;
+        const gainLossPercent = ((gainLoss / investment) * 100).toFixed(2);
+        
+        console.log(`✅ ${realTimeData.stockName}:`);
+        console.log(`   Purchase: ${realTimeData.currency}${realTimeData.purchasePrice.toFixed(2)} (${realTimeData.purchaseDate})`);
+        console.log(`   Current:  ${realTimeData.currency}${realTimeData.currentPrice.toFixed(2)} [LIVE]`);
+        console.log(`   Gain/Loss: ${realTimeData.currency}${gainLoss.toFixed(2)} (${gainLossPercent}%)`);
+        console.log(`   P/E Ratio: ${realTimeData.peRatio || 'N/A'}`);
+        console.log(`   Earnings: ${realTimeData.currency}${realTimeData.latestEarnings || 'N/A'}`);
+        console.log(`   Source: ${realTimeData.source}`);
+        
+        const stockData = {
+          ...stockInfo,
+          purchasePrice: realTimeData.purchasePrice,
+          purchaseDate: realTimeData.purchaseDate,
+          investment,
+          currentMarketPrice: realTimeData.currentPrice,
+          presentValue,
+          gainLoss,
+          peRatio: realTimeData.peRatio || 0,
+          latestEarnings: realTimeData.latestEarnings || 0,
+          change: realTimeData.change || 0,
+          changePercent: realTimeData.changePercent || 0,
+          source: realTimeData.source
+        };
+        
+        stocksWithLiveData.push(stockData);
+        totalInvestment += investment;
+        totalPresentValue += presentValue;
+        totalGainLoss += gainLoss;
+        
+      } catch (error) {
+        console.error(`❌ Error processing ${realTimeData.symbol}:`, error);
+        continue;
+      }
+    }
+
+    console.log('💾 Inserting stocks into database...');
+
+    // Insert stocks with live data and calculated portfolio percentages
+    for (const stock of stocksWithLiveData) {
+      const portfolioPercentage = totalInvestment > 0 ? (stock.investment / totalInvestment) * 100 : 0;
       
       await Database.query(`
         INSERT INTO stocks (
@@ -106,23 +145,54 @@ async function seedDatabase() {
     }
 
     // Create initial portfolio snapshot
-    const totalPresentValue = sampleStocks.reduce((sum, stock) => sum + stock.presentValue, 0);
-    const totalGainLoss = sampleStocks.reduce((sum, stock) => sum + stock.gainLoss, 0);
-
     await Database.query(`
       INSERT INTO portfolio_snapshots (total_investment, total_present_value, total_gain_loss)
       VALUES ($1, $2, $3)
     `, [totalInvestment, totalPresentValue, totalGainLoss]);
 
-    console.log('Database seeding completed successfully!');
-    console.log(`Inserted ${sampleStocks.length} stocks`);
-    console.log(`Total Investment: ₹${totalInvestment.toLocaleString()}`);
-    console.log(`Total Present Value: ₹${totalPresentValue.toLocaleString()}`);
-    console.log(`Total Gain/Loss: ₹${totalGainLoss.toLocaleString()}`);
+    // Generate real-time portfolio statistics
+    const portfolioStats = realTimeDataService.getPortfolioStatistics(
+      stocksWithLiveData.map(stock => ({
+        symbol: stock.symbol,
+        stockName: stock.stockName || stock.symbol,
+        currentPrice: stock.currentMarketPrice,
+        purchasePrice: stock.purchasePrice,
+        purchaseDate: stock.purchaseDate,
+        currency: '₹',
+        peRatio: stock.peRatio,
+        latestEarnings: stock.latestEarnings,
+        change: stock.change,
+        changePercent: stock.changePercent,
+        source: stock.source,
+        gainLoss: stock.gainLoss,
+        gainLossPercent: ((stock.gainLoss / (stock.purchasePrice * stock.quantity)) * 100)
+      }))
+    );
+
+    // Get market status
+    const marketStatus = await realTimeDataService.getMarketStatus();
+
+    console.log('✅ Database seeding completed successfully with LIVE REAL-TIME data!');
+    console.log(`📈 Portfolio Summary:`);
+    console.log(`   Stocks inserted: ${stocksWithLiveData.length}`);
+    console.log(`   Total Investment: ₹${totalInvestment.toLocaleString('en-IN')}`);
+    console.log(`   Total Present Value: ₹${totalPresentValue.toLocaleString('en-IN')} [LIVE]`);
+    console.log(`   Total Gain/Loss: ₹${totalGainLoss.toLocaleString('en-IN')} (${totalInvestment > 0 ? ((totalGainLoss/totalInvestment)*100).toFixed(2) : '0.00'}%)`);
+    console.log(`🔴 Real-Time Portfolio Statistics:`);
+    console.log(`   Gainers: ${portfolioStats.gainers} stocks`);
+    console.log(`   Losers: ${portfolioStats.losers} stocks`);
+    console.log(`   Neutral: ${portfolioStats.neutral} stocks`);
+    console.log(`   Average Return: ${portfolioStats.avgGainLossPercent}%`);
+    console.log(`   Best Performer: +${portfolioStats.maxGain}%`);
+    console.log(`   Worst Performer: ${portfolioStats.maxLoss}%`);
+    console.log(`📊 Market Status:`);
+    console.log(`   Market Open: ${marketStatus.marketOpen ? 'YES' : 'NO'}`);
+    console.log(`   Data Freshness: ${marketStatus.dataFreshness.toUpperCase()}`);
+    console.log(`   Timestamp: ${marketStatus.timestamp}`);
     
     process.exit(0);
   } catch (error) {
-    console.error('Seeding failed:', error);
+    console.error('❌ Seeding failed:', error);
     process.exit(1);
   }
 }
