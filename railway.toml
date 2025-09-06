@@ -2,6 +2,9 @@
 builder = "nixpacks"
 buildCommand = "npm ci && npm run build"
 
+[build.env]
+NODE_VERSION = "20"
+
 [deploy]
 healthcheckPath = "/health"
 healthcheckTimeout = 300
