@@ -7,9 +7,13 @@ const marketDataService_1 = __importDefault(require("../services/marketDataServi
 const logger_1 = require("../utils/logger");
 const database_1 = __importDefault(require("../config/database"));
 class PortfolioController {
+    /**
+     * Get portfolio summary with live market data
+     */
     static async getPortfolioSummary(req, res) {
         try {
             logger_1.logger.info('Fetching portfolio summary from database with live market data');
+            // Fetch stocks from database
             const result = await database_1.default.query(`
         SELECT id, stock_name as "stockName", purchase_price as "purchasePrice", 
                quantity, investment, portfolio_percentage as "portfolioPercentage",
@@ -31,24 +35,30 @@ class PortfolioController {
                 });
                 return;
             }
+            // Convert database rows to Stock objects and fetch live market data
             const portfolioStocks = [];
             for (const row of result.rows) {
+                // Extract symbol from stock name (first word or use a symbol mapping)
                 const symbol = PortfolioController.extractStockSymbol(row.stockName);
+                // Fetch live market data from external APIs
                 logger_1.logger.info(`Fetching live market data for ${row.stockName} (${symbol})`);
                 const marketData = await marketDataService_1.default.getMarketData(symbol, row.stockExchangeCode);
                 let currentMarketPrice = parseFloat(row.currentMarketPrice);
                 let peRatio = row.peRatio ? parseFloat(row.peRatio) : undefined;
                 let latestEarnings = row.latestEarnings ? parseFloat(row.latestEarnings) : undefined;
+                // Use live data if available, otherwise fall back to database values
                 if (marketData) {
                     currentMarketPrice = marketData.currentPrice;
                     peRatio = marketData.peRatio || peRatio;
                     latestEarnings = marketData.latestEarnings || latestEarnings;
+                    // Update database with latest market data
                     await database_1.default.query(`
             UPDATE stocks 
             SET current_market_price = $1, pe_ratio = $2, latest_earnings = $3, updated_at = NOW()
             WHERE id = $4
           `, [currentMarketPrice, peRatio, latestEarnings, row.id]);
                 }
+                // Calculate derived values with live data
                 const investment = parseFloat(row.investment);
                 const presentValue = currentMarketPrice * parseInt(row.quantity);
                 const gainLoss = presentValue - investment;
@@ -75,6 +85,7 @@ class PortfolioController {
                 portfolioStocks.push(stock);
             }
             const updatedStocks = portfolioStocks;
+            // Calculate portfolio metrics
             const portfolio = PortfolioController.calculatePortfolioMetrics(updatedStocks);
             res.json({
                 success: true,
@@ -90,9 +101,13 @@ class PortfolioController {
             });
         }
     }
+    /**
+     * Get sector-wise summary
+     */
     static async getSectorSummary(req, res) {
         try {
             logger_1.logger.info('Fetching sector summary from database');
+            // Fetch stocks from database
             const result = await database_1.default.query(`
         SELECT id, stock_name as "stockName", purchase_price as "purchasePrice", 
                quantity, investment, portfolio_percentage as "portfolioPercentage",
@@ -109,19 +124,24 @@ class PortfolioController {
                 });
                 return;
             }
+            // Convert database rows to Stock objects and fetch live market data
             const portfolioStocks = [];
             for (const row of result.rows) {
+                // Extract symbol from stock name
                 const symbol = PortfolioController.extractStockSymbol(row.stockName);
+                // Fetch live market data from external APIs
                 logger_1.logger.info(`Fetching live market data for ${row.stockName} (${symbol})`);
                 const marketData = await marketDataService_1.default.getMarketData(symbol, row.stockExchangeCode);
                 let currentMarketPrice = parseFloat(row.currentMarketPrice);
                 let peRatio = row.peRatio ? parseFloat(row.peRatio) : undefined;
                 let latestEarnings = row.latestEarnings ? parseFloat(row.latestEarnings) : undefined;
+                // Use live data if available
                 if (marketData) {
                     currentMarketPrice = marketData.currentPrice;
                     peRatio = marketData.peRatio || peRatio;
                     latestEarnings = marketData.latestEarnings || latestEarnings;
                 }
+                // Calculate derived values with live data
                 const investment = parseFloat(row.investment);
                 const presentValue = currentMarketPrice * parseInt(row.quantity);
                 const gainLoss = presentValue - investment;
@@ -148,6 +168,7 @@ class PortfolioController {
                 portfolioStocks.push(stock);
             }
             const updatedStocks = portfolioStocks;
+            // Group by sector
             const sectorMap = new Map();
             updatedStocks.forEach(stock => {
                 if (!sectorMap.has(stock.sector)) {
@@ -155,6 +176,7 @@ class PortfolioController {
                 }
                 sectorMap.get(stock.sector).push(stock);
             });
+            // Calculate sector summaries
             const sectorSummaries = Array.from(sectorMap.entries()).map(([sector, stocks]) => {
                 const totalInvestment = stocks.reduce((sum, stock) => sum + stock.investment, 0);
                 const totalPresentValue = stocks.reduce((sum, stock) => sum + stock.presentValue, 0);
@@ -184,9 +206,13 @@ class PortfolioController {
             });
         }
     }
+    /**
+     * Get portfolio metrics and analytics
+     */
     static async getPortfolioMetrics(req, res) {
         try {
             logger_1.logger.info('Fetching portfolio metrics from database');
+            // Fetch stocks from database
             const result = await database_1.default.query(`
         SELECT id, stock_name as "stockName", purchase_price as "purchasePrice", 
                quantity, investment, portfolio_percentage as "portfolioPercentage",
@@ -209,19 +235,24 @@ class PortfolioController {
                 });
                 return;
             }
+            // Convert database rows to Stock objects and fetch live market data
             const portfolioStocks = [];
             for (const row of result.rows) {
+                // Extract symbol from stock name
                 const symbol = PortfolioController.extractStockSymbol(row.stockName);
+                // Fetch FRESH live market data from external APIs for analytics
                 logger_1.logger.info(`Fetching live analytics data for ${row.stockName} (${symbol})`);
                 const marketData = await marketDataService_1.default.getMarketData(symbol, row.stockExchangeCode);
                 let currentMarketPrice = parseFloat(row.currentMarketPrice);
                 let peRatio = row.peRatio ? parseFloat(row.peRatio) : undefined;
                 let latestEarnings = row.latestEarnings ? parseFloat(row.latestEarnings) : undefined;
+                // Use live data if available
                 if (marketData) {
                     currentMarketPrice = marketData.currentPrice;
                     peRatio = marketData.peRatio || peRatio;
                     latestEarnings = marketData.latestEarnings || latestEarnings;
                 }
+                // Calculate derived values with live data
                 const investment = parseFloat(row.investment);
                 const presentValue = currentMarketPrice * parseInt(row.quantity);
                 const gainLoss = presentValue - investment;
@@ -247,15 +278,18 @@ class PortfolioController {
                 };
                 portfolioStocks.push(stock);
             }
+            // Calculate metrics
             const totalStocks = portfolioStocks.length;
             const sectors = new Set(portfolioStocks.map(stock => stock.sector));
             const totalSectors = sectors.size;
+            // Find best and worst performing stocks
             const stocksWithGainPercent = portfolioStocks.map(stock => ({
                 ...stock,
                 gainPercentage: stock.investment > 0 ? (stock.gainLoss / stock.investment) * 100 : 0
             }));
             const bestPerformingStock = stocksWithGainPercent.reduce((best, current) => current.gainPercentage > best.gainPercentage ? current : best);
             const worstPerformingStock = stocksWithGainPercent.reduce((worst, current) => current.gainPercentage < worst.gainPercentage ? current : worst);
+            // Find top sector by value
             const sectorValues = new Map();
             portfolioStocks.forEach(stock => {
                 const currentValue = sectorValues.get(stock.sector) || 0;
@@ -263,19 +297,22 @@ class PortfolioController {
             });
             const topSectorByValue = Array.from(sectorValues.entries())
                 .reduce((top, [sector, value]) => value > (top?.value || 0) ? { sector, value } : top, null);
+            // Calculate comprehensive portfolio metrics with LIVE data
             const totalInvestment = portfolioStocks.reduce((sum, stock) => sum + stock.investment, 0);
             const totalPresentValue = portfolioStocks.reduce((sum, stock) => sum + stock.presentValue, 0);
             const totalReturn = totalPresentValue - totalInvestment;
             const totalReturnPercentage = totalInvestment > 0 ? (totalReturn / totalInvestment) * 100 : 0;
+            // Calculate average P/E with live data
             const validPERatios = portfolioStocks.filter(stock => stock.peRatio > 0).map(stock => stock.peRatio);
             const averagePE = validPERatios.length > 0 ? validPERatios.reduce((sum, pe) => sum + pe, 0) / validPERatios.length : 0;
+            // Calculate diversification metrics
             const largestSectorWeight = Math.max(...Array.from(sectorValues.values()).map(value => (value / totalPresentValue) * 100));
             const concentration = largestSectorWeight > 50 ? 'High' : largestSectorWeight > 30 ? 'Medium' : 'Low';
             logger_1.logger.info(`Live Portfolio Analytics: Total Return ₹${totalReturn.toFixed(2)} (${totalReturnPercentage.toFixed(2)}%), Avg P/E: ${averagePE.toFixed(2)}`);
             const metrics = {
                 totalReturn,
                 totalReturnPercentage,
-                dayGain: totalReturn,
+                dayGain: totalReturn, // Using total return as day gain
                 dayGainPercentage: totalReturnPercentage,
                 bestPerformer: bestPerformingStock.gainPercentage > 0 ? {
                     stock: {
@@ -329,7 +366,7 @@ class PortfolioController {
                     concentration: concentration
                 },
                 averagePE,
-                totalDividendYield: 0
+                totalDividendYield: 0 // Can be enhanced with dividend data
             };
             res.json({
                 success: true,
@@ -345,6 +382,9 @@ class PortfolioController {
             });
         }
     }
+    /**
+     * Update stock prices using market data service
+     */
     static async updateStockPrices(stocks) {
         try {
             const symbols = stocks.map(stock => stock.symbol);
@@ -359,6 +399,7 @@ class PortfolioController {
                         latestEarnings: marketData.latestEarnings || stock.latestEarnings,
                         lastUpdated: marketData.lastUpdated
                     };
+                    // Recalculate derived values
                     updatedStock.presentValue = updatedStock.currentMarketPrice * updatedStock.quantity;
                     updatedStock.gainLoss = updatedStock.presentValue - updatedStock.investment;
                     return updatedStock;
@@ -368,13 +409,17 @@ class PortfolioController {
         }
         catch (error) {
             logger_1.logger.error('Error updating stock prices:', error);
-            return stocks;
+            return stocks; // Return original stocks if update fails
         }
     }
+    /**
+     * Calculate portfolio metrics
+     */
     static calculatePortfolioMetrics(stocks) {
         const totalInvestment = stocks.reduce((sum, stock) => sum + stock.investment, 0);
         const totalPresentValue = stocks.reduce((sum, stock) => sum + stock.presentValue, 0);
         const totalGainLoss = totalPresentValue - totalInvestment;
+        // Update portfolio percentages
         const updatedStocks = stocks.map(stock => ({
             ...stock,
             portfolioPercentage: totalInvestment > 0 ? (stock.investment / totalInvestment) * 100 : 0
@@ -386,9 +431,13 @@ class PortfolioController {
             stocks: updatedStocks
         };
     }
+    /**
+     * Update all stock prices manually
+     */
     static async updateAllStockPrices(req, res) {
         try {
             logger_1.logger.info('Manually updating all stock prices in database');
+            // Fetch all stocks from database
             const result = await database_1.default.query(`
         SELECT id, stock_name as "stockName", stock_exchange_code as "stockExchangeCode", 
                purchase_price as "purchasePrice", quantity
@@ -404,8 +453,10 @@ class PortfolioController {
             }
             let updatedCount = 0;
             const timestamp = new Date().toISOString();
+            // Update each stock's price
             for (const row of result.rows) {
                 try {
+                    // Extract symbol from stock name (first word)
                     const symbol = row.stockName.split(' ')[0].toUpperCase();
                     const marketData = await marketDataService_1.default.getMarketData(symbol, row.stockExchangeCode);
                     if (marketData) {
@@ -436,6 +487,7 @@ class PortfolioController {
                     logger_1.logger.warn(`Failed to update price for ${row.stockName}:`, error);
                 }
             }
+            // Recalculate portfolio percentages
             await PortfolioController.recalculatePortfolioPercentages();
             res.json({
                 success: true,
@@ -456,7 +508,11 @@ class PortfolioController {
             });
         }
     }
+    /**
+     * Extract stock symbol from stock name with proper mapping
+     */
     static extractStockSymbol(stockName) {
+        // Define mapping for common stock names to their trading symbols
         const symbolMapping = {
             'Reliance Industries Ltd': 'RELIANCE.NS',
             'Tata Consultancy Services Ltd': 'TCS.NS',
@@ -469,14 +525,20 @@ class PortfolioController {
             'Hindustan Unilever Ltd': 'HINDUNILVR.NS',
             'Larsen & Toubro Ltd': 'LT.NS'
         };
+        // Check if we have a direct mapping
         if (symbolMapping[stockName]) {
             return symbolMapping[stockName];
         }
+        // Fallback: Extract first word and append .NS for NSE
         const firstWord = stockName.split(' ')[0].toUpperCase();
         return `${firstWord}.NS`;
     }
+    /**
+     * Recalculate portfolio percentages
+     */
     static async recalculatePortfolioPercentages() {
         try {
+            // Get total investment
             const totalResult = await database_1.default.query('SELECT SUM(investment) as total FROM stocks');
             const totalInvestment = parseFloat(totalResult.rows[0]?.total || '0');
             if (totalInvestment > 0) {

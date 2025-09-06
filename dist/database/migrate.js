@@ -9,10 +9,12 @@ const database_1 = __importDefault(require("../config/database"));
 async function runMigration() {
     try {
         console.log('Starting database migration...');
+        // Test database connection
         const isConnected = await database_1.default.testConnection();
         if (!isConnected) {
             throw new Error('Failed to connect to database');
         }
+        // Read and execute schema file
         const schemaPath = path_1.default.join(__dirname, '..', '..', 'src', 'database', 'schema.sql');
         const schema = fs_1.default.readFileSync(schemaPath, 'utf8');
         await database_1.default.query(schema);

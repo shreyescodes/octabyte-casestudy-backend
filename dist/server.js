@@ -13,9 +13,11 @@ const marketDataService_1 = __importDefault(require("./services/marketDataServic
 const portfolioRoutes_1 = __importDefault(require("./routes/portfolioRoutes"));
 const stockRoutes_1 = __importDefault(require("./routes/stockRoutes"));
 const database_1 = __importDefault(require("./config/database"));
+// Load environment variables
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
+// Middleware
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
@@ -23,6 +25,7 @@ app.use((0, cors_1.default)({
 }));
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true }));
+// Custom request logging
 app.use((req, res, next) => {
     const start = Date.now();
     res.on('finish', () => {
@@ -31,9 +34,11 @@ app.use((req, res, next) => {
     });
     next();
 });
+// Morgan for additional HTTP logging in development
 if (process.env.NODE_ENV === 'development') {
     app.use((0, morgan_1.default)('dev'));
 }
+// Health check endpoint
 app.get('/api/health', async (req, res) => {
     try {
         const [serviceHealth, dbHealth] = await Promise.all([
@@ -59,8 +64,10 @@ app.get('/api/health', async (req, res) => {
         });
     }
 });
+// API Routes
 app.use('/api/portfolio', portfolioRoutes_1.default);
 app.use('/api/stocks', stockRoutes_1.default);
+// Market data endpoints
 app.get('/api/market/price/:symbol', async (req, res) => {
     try {
         const { symbol } = req.params;
@@ -153,6 +160,7 @@ app.post('/api/market/batch', async (req, res) => {
         }
         logger_1.logger.info(`Fetching batch market data for ${symbols.length} symbols`);
         const batchData = await marketDataService_1.default.getBatchMarketData(symbols, exchange);
+        // Transform the data to include success/failure status for each symbol
         const results = Object.entries(batchData).map(([symbol, data]) => ({
             symbol,
             success: data !== null,
@@ -182,6 +190,7 @@ app.post('/api/market/batch', async (req, res) => {
         });
     }
 });
+// Cache management endpoints
 app.get('/api/cache/stats', async (req, res) => {
     try {
         const stats = marketDataService_1.default.getCacheStats();
@@ -252,6 +261,7 @@ app.post('/api/cache/refresh/:symbol', async (req, res) => {
         });
     }
 });
+// 404 handler
 app.use('*', (req, res) => {
     res.status(404).json({
         success: false,
@@ -259,6 +269,7 @@ app.use('*', (req, res) => {
         path: req.originalUrl
     });
 });
+// Error handling middleware
 app.use((err, req, res, next) => {
     logger_1.logger.error('Unhandled error:', err);
     res.status(err.status || 500).json({
@@ -267,6 +278,7 @@ app.use((err, req, res, next) => {
         ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
     });
 });
+// Graceful shutdown
 const gracefulShutdown = async (signal) => {
     logger_1.logger.info(`Received ${signal}. Starting graceful shutdown...`);
     try {
@@ -275,6 +287,7 @@ const gracefulShutdown = async (signal) => {
             logger_1.logger.info('HTTP server closed');
             process.exit(0);
         });
+        // Force close after 30 seconds
         setTimeout(() => {
             logger_1.logger.error('Could not close connections in time, forcefully shutting down');
             process.exit(1);
@@ -285,6 +298,7 @@ const gracefulShutdown = async (signal) => {
         process.exit(1);
     }
 };
+// Database initialization
 async function initializeDatabase() {
     try {
         logger_1.logger.info('Testing database connection...');
@@ -303,6 +317,7 @@ async function initializeDatabase() {
         return false;
     }
 }
+// Start server
 const startServer = async () => {
     const dbInitialized = await initializeDatabase();
     if (!dbInitialized) {
@@ -316,9 +331,12 @@ const startServer = async () => {
     });
     return server;
 };
+// Start the server
 const server = startServer();
+// Handle process signals
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+// Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
     logger_1.logger.error('Uncaught Exception:', error);
     process.exit(1);

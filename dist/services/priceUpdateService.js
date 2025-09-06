@@ -10,20 +10,28 @@ const logger_1 = require("../utils/logger");
 class PriceUpdateService {
     constructor() {
         this.updateInterval = null;
-        this.UPDATE_INTERVAL = 5 * 60 * 1000;
+        this.UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes
         this.isUpdating = false;
     }
+    /**
+     * Start automatic price updates
+     */
     startAutoUpdate() {
         if (this.updateInterval) {
             logger_1.logger.warn('Price update service is already running');
             return;
         }
         logger_1.logger.info(`Starting automatic price updates every ${this.UPDATE_INTERVAL / 1000} seconds`);
+        // Initial update
         this.updateAllStockPrices();
+        // Set up recurring updates
         this.updateInterval = setInterval(() => {
             this.updateAllStockPrices();
         }, this.UPDATE_INTERVAL);
     }
+    /**
+     * Stop automatic price updates
+     */
     stopAutoUpdate() {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
@@ -31,6 +39,9 @@ class PriceUpdateService {
             logger_1.logger.info('Stopped automatic price updates');
         }
     }
+    /**
+     * Update prices for all stocks in the database
+     */
     async updateAllStockPrices() {
         if (this.isUpdating) {
             logger_1.logger.debug('Price update already in progress, skipping');
@@ -40,6 +51,7 @@ class PriceUpdateService {
         const startTime = Date.now();
         try {
             logger_1.logger.info('🔄 Starting portfolio price update...');
+            // Get all stocks from database
             const stocksResult = await database_1.default.query(`
         SELECT id, stock_name, purchase_price, quantity, stock_exchange_code, sector
         FROM stocks
@@ -50,16 +62,19 @@ class PriceUpdateService {
                 return;
             }
             logger_1.logger.info(`Updating prices for ${stocks.length} stocks`);
+            // Extract symbols for batch fetching
             const symbols = stocks.map((stock) => this.extractStockSymbol(stock.stock_name));
+            // Fetch market data in batch
             const marketDataResults = await marketDataService_1.marketDataService.getBatchMarketData(symbols);
             let updatedCount = 0;
             let totalInvestment = 0;
             let totalPresentValue = 0;
+            // Update each stock
             for (const stock of stocks) {
                 try {
                     const symbol = this.extractStockSymbol(stock.stock_name);
                     const marketData = marketDataResults[symbol];
-                    let currentMarketPrice = stock.purchase_price;
+                    let currentMarketPrice = stock.purchase_price; // Fallback
                     let peRatio = 0;
                     let latestEarnings = 0;
                     if (marketData) {
@@ -67,9 +82,11 @@ class PriceUpdateService {
                         peRatio = marketData.peRatio || 0;
                         latestEarnings = marketData.latestEarnings || 0;
                     }
+                    // Calculate derived values
                     const investment = stock.purchase_price * stock.quantity;
                     const presentValue = currentMarketPrice * stock.quantity;
                     const gainLoss = presentValue - investment;
+                    // Update stock in database
                     await database_1.default.query(`
             UPDATE stocks 
             SET 
@@ -95,12 +112,14 @@ class PriceUpdateService {
                     logger_1.logger.error(`Error updating stock ${stock.stock_name}:`, error);
                 }
             }
+            // Update portfolio percentages
             if (totalInvestment > 0) {
                 await database_1.default.query(`
           UPDATE stocks 
           SET portfolio_percentage = (investment / $1) * 100
         `, [totalInvestment]);
             }
+            // Create portfolio snapshot
             const totalGainLoss = totalPresentValue - totalInvestment;
             await database_1.default.query(`
         INSERT INTO portfolio_snapshots (total_investment, total_present_value, total_gain_loss)
@@ -119,8 +138,12 @@ class PriceUpdateService {
             this.isUpdating = false;
         }
     }
+    /**
+     * Update price for a specific stock
+     */
     async updateStockPrice(stockId) {
         try {
+            // Get stock details
             const stockResult = await database_1.default.query(`
         SELECT id, stock_name, purchase_price, quantity, stock_exchange_code
         FROM stocks
@@ -132,8 +155,9 @@ class PriceUpdateService {
             }
             const stock = stockResult.rows[0];
             const symbol = this.extractStockSymbol(stock.stock_name);
+            // Fetch live market data
             const marketData = await marketDataService_1.marketDataService.getMarketData(symbol, stock.stock_exchange_code);
-            let currentMarketPrice = stock.purchase_price;
+            let currentMarketPrice = stock.purchase_price; // Fallback
             let peRatio = 0;
             let latestEarnings = 0;
             if (marketData) {
@@ -141,9 +165,11 @@ class PriceUpdateService {
                 peRatio = marketData.peRatio || 0;
                 latestEarnings = marketData.latestEarnings || 0;
             }
+            // Calculate derived values
             const investment = stock.purchase_price * stock.quantity;
             const presentValue = currentMarketPrice * stock.quantity;
             const gainLoss = presentValue - investment;
+            // Update stock in database
             await database_1.default.query(`
         UPDATE stocks 
         SET 
@@ -155,6 +181,7 @@ class PriceUpdateService {
           updated_at = NOW()
         WHERE id = $6
       `, [currentMarketPrice, presentValue, gainLoss, peRatio, latestEarnings, stockId]);
+            // Update portfolio percentages for all stocks
             const totalInvestmentResult = await database_1.default.query('SELECT SUM(investment) as total FROM stocks');
             const totalInvestment = totalInvestmentResult.rows[0]?.total || 0;
             if (totalInvestment > 0) {
@@ -171,16 +198,24 @@ class PriceUpdateService {
             return false;
         }
     }
+    /**
+     * Extract stock symbol from stock name - completely dynamic approach
+     */
     extractStockSymbol(stockName) {
+        // Dynamic extraction without hardcoded mappings
+        // Remove common company suffixes and extract symbol
         return stockName
-            .replace(/\s+(Ltd|Limited|Corporation|Corp|Inc|Pvt)\.?$/i, '')
-            .replace(/\s+(Industries|Bank|Services|Finance|Consultancy|Telecom|Motors)$/i, '')
-            .split(' ')
-            .map(word => word.substring(0, 4))
-            .join('')
+            .replace(/\s+(Ltd|Limited|Corporation|Corp|Inc|Pvt)\.?$/i, '') // Remove company suffixes
+            .replace(/\s+(Industries|Bank|Services|Finance|Consultancy|Telecom|Motors)$/i, '') // Remove business type words
+            .split(' ') // Split by spaces
+            .map(word => word.substring(0, 4)) // Take first 4 chars of each word
+            .join('') // Join them
             .toUpperCase()
-            .substring(0, 10);
+            .substring(0, 10); // Limit to 10 chars
     }
+    /**
+     * Get update service status
+     */
     getStatus() {
         return {
             isRunning: this.updateInterval !== null,
@@ -191,6 +226,8 @@ class PriceUpdateService {
     }
 }
 exports.PriceUpdateService = PriceUpdateService;
+// Create singleton instance
 exports.priceUpdateService = new PriceUpdateService();
+// Start price updates when the service is imported
 exports.priceUpdateService.startAutoUpdate();
 exports.default = exports.priceUpdateService;

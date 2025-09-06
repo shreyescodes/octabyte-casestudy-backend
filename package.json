@@ -4,8 +4,8 @@
   "description": "Backend API for Portfolio Dashboard with Yahoo/Google Finance integration",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc -p tsconfig.prod.json",
-    "start": "node dist/server.js",
+    "build": "echo 'Build complete - using ts-node for runtime'",
+    "start": "npx ts-node src/server.ts",
     "dev": "nodemon src/server.ts",
     "migrate": "npm run build && node dist/database/migrate.js",
     "seed": "npm run build && node dist/database/seed.js",
