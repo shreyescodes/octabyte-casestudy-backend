@@ -31,8 +31,41 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // CORS configuration
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://frontend-lg9n2gwos-shreyas-projects-2b8608b2.vercel.app',
+  'https://frontend-6spumjli9-shreyas-projects-2b8608b2.vercel.app',
+  'https://frontend-hepl5od6c-shreyas-projects-2b8608b2.vercel.app',
+  'https://frontend-73kwx05gl-shreyas-projects-2b8608b2.vercel.app',
+  'https://frontend-sage-eight-46.vercel.app',
+  process.env.CORS_ORIGIN
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Allow any Vercel app domain for this project (more flexible)
+    if (origin && (
+      origin.includes('shreyas-projects-2b8608b2.vercel.app') ||
+      origin.includes('.vercel.app')
+    )) {
+      return callback(null, true);
+    }
+    
+    // Allow localhost for development
+    if (origin && origin.includes('localhost')) {
+      return callback(null, true);
+    }
+    
+    const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+    return callback(new Error(msg), false);
+  },
   credentials: true
 }));
 

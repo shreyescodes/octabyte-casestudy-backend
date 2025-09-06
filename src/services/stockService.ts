@@ -129,7 +129,8 @@ export class StockService {
         gain_loss = $8,
         pe_ratio = $9,
         latest_earnings = $10,
-        sector = $11
+        sector = $11,
+        updated_at = NOW()
       WHERE id = $12
       RETURNING 
         id,

@@ -26,8 +26,32 @@ const limiter = (0, express_rate_limit_1.default)({
     }
 });
 app.use('/api', limiter);
+const allowedOrigins = [
+    'http://localhost:3000',
+    'https://frontend-lg9n2gwos-shreyas-projects-2b8608b2.vercel.app',
+    'https://frontend-6spumjli9-shreyas-projects-2b8608b2.vercel.app',
+    'https://frontend-hepl5od6c-shreyas-projects-2b8608b2.vercel.app',
+    'https://frontend-73kwx05gl-shreyas-projects-2b8608b2.vercel.app',
+    'https://frontend-sage-eight-46.vercel.app',
+    process.env.CORS_ORIGIN
+].filter(Boolean);
 app.use((0, cors_1.default)({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: function (origin, callback) {
+        if (!origin)
+            return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        if (origin && (origin.includes('shreyas-projects-2b8608b2.vercel.app') ||
+            origin.includes('.vercel.app'))) {
+            return callback(null, true);
+        }
+        if (origin && origin.includes('localhost')) {
+            return callback(null, true);
+        }
+        const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+        return callback(new Error(msg), false);
+    },
     credentials: true
 }));
 app.use(express_1.default.json({ limit: '10mb' }));

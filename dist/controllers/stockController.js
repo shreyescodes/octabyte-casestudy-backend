@@ -7,6 +7,7 @@ const uuid_1 = require("uuid");
 const marketDataService_1 = __importDefault(require("../services/marketDataService"));
 const logger_1 = require("../utils/logger");
 const database_1 = __importDefault(require("../config/database"));
+const stockService_1 = require("../services/stockService");
 class StockController {
     static async getAllStocks(req, res) {
         try {
@@ -253,11 +254,57 @@ class StockController {
         }
     }
     static async updateStock(req, res) {
-        res.status(501).json({
-            success: false,
-            message: 'Stock update not implemented in live data demo',
-            note: 'Focus is on live data fetching from external APIs'
-        });
+        try {
+            const { id } = req.params;
+            const updateData = req.body;
+            if (!id) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Stock ID is required'
+                });
+                return;
+            }
+            logger_1.logger.info(`Updating stock ${id} with data:`, updateData);
+            if (updateData.stockName || updateData.stockExchangeCode) {
+                try {
+                    const symbol = updateData.stockName || (await stockService_1.StockService.getStockById(id))?.stockName;
+                    const exchange = updateData.stockExchangeCode || (await stockService_1.StockService.getStockById(id))?.stockExchangeCode || 'NSE';
+                    if (symbol) {
+                        const marketData = await marketDataService_1.default.getMarketData(symbol, exchange);
+                        if (marketData) {
+                            updateData.currentMarketPrice = marketData.currentPrice;
+                            updateData.peRatio = marketData.peRatio;
+                            updateData.latestEarnings = marketData.latestEarnings;
+                        }
+                    }
+                }
+                catch (marketError) {
+                    logger_1.logger.warn(`Failed to fetch live market data for stock update: ${marketError}`);
+                }
+            }
+            const updatedStock = await stockService_1.StockService.updateStock(id, updateData);
+            if (!updatedStock) {
+                res.status(404).json({
+                    success: false,
+                    message: 'Stock not found'
+                });
+                return;
+            }
+            logger_1.logger.info(`Successfully updated stock: ${updatedStock.stockName}`);
+            res.json({
+                success: true,
+                data: updatedStock,
+                message: 'Stock updated successfully'
+            });
+        }
+        catch (error) {
+            logger_1.logger.error('Error updating stock:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to update stock',
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+        }
     }
     static async deleteStock(req, res) {
         try {

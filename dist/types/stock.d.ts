@@ -34,6 +34,9 @@ export interface StockUpdateRequest {
     quantity?: number;
     stockExchangeCode?: string;
     sector?: string;
+    currentMarketPrice?: number;
+    peRatio?: number;
+    latestEarnings?: number;
 }
 export interface MarketData {
     symbol: string;
