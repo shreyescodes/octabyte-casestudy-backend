@@ -11,4 +11,4 @@ startCommand = "npm start"
 [environments.production.variables]
 NODE_ENV = "production"
 PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
-PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium".
+PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium"
