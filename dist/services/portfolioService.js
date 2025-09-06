@@ -7,9 +7,6 @@ exports.PortfolioService = void 0;
 const database_1 = __importDefault(require("../config/database"));
 const logger_1 = require("../utils/logger");
 class PortfolioService {
-    /**
-     * Get all stocks from database
-     */
     static async getAllStocks() {
         try {
             const query = `
@@ -38,7 +35,7 @@ class PortfolioService {
             return result.rows.map((row) => ({
                 id: row.id,
                 stockName: row.stock_name,
-                symbol: row.stock_name, // We'll need to add symbol column later
+                symbol: row.stock_name,
                 purchasePrice: parseFloat(row.purchase_price),
                 quantity: parseInt(row.quantity),
                 investment: parseFloat(row.investment),
@@ -61,15 +58,11 @@ class PortfolioService {
             throw new Error('Failed to fetch stocks from database');
         }
     }
-    /**
-     * Get portfolio summary
-     */
     static async getPortfolioSummary() {
         const stocks = await this.getAllStocks();
         const totalInvestment = stocks.reduce((sum, stock) => sum + stock.investment, 0);
         const totalPresentValue = stocks.reduce((sum, stock) => sum + stock.presentValue, 0);
         const totalGainLoss = totalPresentValue - totalInvestment;
-        // Update portfolio percentages
         const updatedStocks = stocks.map(stock => ({
             ...stock,
             portfolioPercentage: totalInvestment > 0 ? (stock.investment / totalInvestment) * 100 : 0
@@ -81,9 +74,6 @@ class PortfolioService {
             stocks: updatedStocks
         };
     }
-    /**
-     * Get sector summary
-     */
     static async getSectorSummary() {
         const stocks = await this.getAllStocks();
         const sectorMap = new Map();
@@ -109,9 +99,6 @@ class PortfolioService {
             };
         });
     }
-    /**
-     * Create new stock
-     */
     static async createStock(stockData) {
         try {
             const query = `
@@ -166,17 +153,12 @@ class PortfolioService {
             throw new Error('Failed to create stock');
         }
     }
-    /**
-     * Update stock
-     */
     static async updateStock(id, updates) {
         try {
-            // First get the current stock
             const currentStock = await this.getStockById(id);
             if (!currentStock) {
                 throw new Error('Stock not found');
             }
-            // Calculate new values
             const updatedStock = { ...currentStock, ...updates };
             const investment = updatedStock.purchasePrice * updatedStock.quantity;
             const presentValue = updatedStock.currentMarketPrice * updatedStock.quantity;
@@ -240,9 +222,6 @@ class PortfolioService {
             throw new Error('Failed to update stock');
         }
     }
-    /**
-     * Delete stock
-     */
     static async deleteStock(id) {
         try {
             const query = 'DELETE FROM stocks WHERE id = $1';
@@ -254,9 +233,6 @@ class PortfolioService {
             throw new Error('Failed to delete stock');
         }
     }
-    /**
-     * Get stock by ID
-     */
     static async getStockById(id) {
         try {
             const query = 'SELECT * FROM stocks WHERE id = $1';

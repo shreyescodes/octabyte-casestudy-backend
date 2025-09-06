@@ -1,7 +1,7 @@
-import { Router } from 'express';
+const express = require('express');
 import { MarketController } from '../controllers/marketController';
 
-const router = Router();
+const router = express.Router();
 
 // Stock Discovery & Search
 // GET /api/market/search?query=RELIANCE&limit=20 - Search across all exchanges

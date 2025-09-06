@@ -1,5 +1,5 @@
 import Database from '../config/database';
-import { Stock, StockCreateRequest, StockUpdateRequest } from '../types';
+import { Stock, StockCreateRequest, StockUpdateRequest } from '../types/index';
 
 export class StockService {
   static async getAllStocks(): Promise<Stock[]> {

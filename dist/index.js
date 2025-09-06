@@ -8,14 +8,12 @@ const database_1 = __importDefault(require("./config/database"));
 const PORT = process.env.PORT || 3001;
 async function startServer() {
     try {
-        // Test database connection
         console.log('Testing database connection...');
         const dbConnected = await database_1.default.testConnection();
         if (!dbConnected) {
             console.error('Failed to connect to database. Please check your database configuration.');
             process.exit(1);
         }
-        // Start the server
         app_1.default.listen(PORT, () => {
             console.log(`🚀 Portfolio Dashboard API server running on port ${PORT}`);
             console.log(`📊 Health check: http://localhost:${PORT}/health`);
@@ -28,7 +26,6 @@ async function startServer() {
         process.exit(1);
     }
 }
-// Handle graceful shutdown
 process.on('SIGTERM', () => {
     console.log('SIGTERM received, shutting down gracefully...');
     process.exit(0);

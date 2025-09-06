@@ -6,9 +6,6 @@ const priceUpdateService_1 = require("../services/priceUpdateService");
 const stockExchangeService_1 = require("../services/stockExchangeService");
 const logger_1 = require("../utils/logger");
 class MarketController {
-    /**
-     * Search for stocks across all exchanges - comprehensive search
-     */
     static async searchStock(req, res) {
         try {
             const { query, limit = '20' } = req.query;
@@ -20,10 +17,8 @@ class MarketController {
                 return;
             }
             logger_1.logger.info(`Searching across all exchanges for: ${query}`);
-            // Search across all listed stocks
             const searchResults = await stockExchangeService_1.stockExchangeService.searchStocks(query.trim(), parseInt(limit));
             if (searchResults.length > 0) {
-                // Enrich results with live market data (for top 5 results to avoid too many API calls)
                 const enrichedResults = await Promise.all(searchResults.slice(0, 5).map(async (stock) => {
                     try {
                         const marketData = await marketDataService_1.marketDataService.getMarketData(stock.symbol, stock.exchange);
@@ -46,7 +41,6 @@ class MarketController {
                         };
                     }
                 }));
-                // Add remaining results without live data (to avoid API rate limits)
                 const remainingResults = searchResults.slice(5).map(stock => ({
                     ...stock,
                     hasLiveData: false
@@ -76,9 +70,6 @@ class MarketController {
             });
         }
     }
-    /**
-     * Get current market price for a symbol
-     */
     static async getCurrentPrice(req, res) {
         try {
             const { symbol } = req.params;
@@ -116,9 +107,6 @@ class MarketController {
             });
         }
     }
-    /**
-     * Get detailed market data for a symbol
-     */
     static async getMarketData(req, res) {
         try {
             const { symbol } = req.params;
@@ -153,13 +141,9 @@ class MarketController {
             });
         }
     }
-    /**
-     * Update all stock prices in portfolio
-     */
     static async updateAllPrices(req, res) {
         try {
             logger_1.logger.info('Manual price update requested');
-            // Trigger price update (don't wait for completion)
             priceUpdateService_1.priceUpdateService.updateAllStockPrices().catch(error => {
                 logger_1.logger.error('Error in manual price update:', error);
             });
@@ -176,9 +160,6 @@ class MarketController {
             });
         }
     }
-    /**
-     * Update specific stock price
-     */
     static async updateStockPrice(req, res) {
         try {
             const { stockId } = req.params;
@@ -211,9 +192,6 @@ class MarketController {
             });
         }
     }
-    /**
-     * Get market service status
-     */
     static async getServiceStatus(req, res) {
         try {
             const [serviceHealth, updateStatus] = await Promise.all([
@@ -237,14 +215,10 @@ class MarketController {
             });
         }
     }
-    /**
-     * Get stock suggestions from all exchanges
-     */
     static async getPopularStocks(req, res) {
         try {
             const { sector, exchange, limit = '20', minMarketCap, maxMarketCap } = req.query;
             logger_1.logger.info('Getting stock suggestions from all exchanges');
-            // Get suggestions based on filters
             const suggestions = await stockExchangeService_1.stockExchangeService.getStockSuggestions({
                 sector: sector,
                 exchange: exchange,
@@ -252,7 +226,6 @@ class MarketController {
                 minMarketCap: minMarketCap ? parseInt(minMarketCap) : undefined,
                 maxMarketCap: maxMarketCap ? parseInt(maxMarketCap) : undefined,
             });
-            // Enrich top suggestions with live market data
             const enrichedSuggestions = await Promise.all(suggestions.slice(0, 10).map(async (stock) => {
                 try {
                     const marketData = await marketDataService_1.marketDataService.getMarketData(stock.symbol, stock.exchange);
@@ -271,7 +244,6 @@ class MarketController {
                     };
                 }
             }));
-            // Add remaining without live data
             const remainingSuggestions = suggestions.slice(10).map(stock => ({
                 ...stock,
                 hasLiveData: false
@@ -297,14 +269,10 @@ class MarketController {
             });
         }
     }
-    /**
-     * Get all available exchanges and sectors
-     */
     static async getMarketInfo(req, res) {
         try {
             const cacheStats = stockExchangeService_1.stockExchangeService.getCacheStats();
             const allStocks = await stockExchangeService_1.stockExchangeService.getAllListedStocks();
-            // Get unique sectors and exchanges
             const sectors = [...new Set(allStocks.map(stock => stock.sector))].filter(Boolean).sort();
             const exchanges = [...new Set(allStocks.map(stock => stock.exchange))].filter(Boolean).sort();
             res.json({
@@ -333,9 +301,6 @@ class MarketController {
             });
         }
     }
-    /**
-     * Browse stocks by sector or exchange
-     */
     static async browseStocks(req, res) {
         try {
             const { sector, exchange, page = '1', limit = '50', sortBy = 'name', sortOrder = 'asc' } = req.query;
@@ -343,16 +308,13 @@ class MarketController {
             const limitNum = parseInt(limit);
             const offset = (pageNum - 1) * limitNum;
             logger_1.logger.info(`Browsing stocks - Sector: ${sector}, Exchange: ${exchange}, Page: ${pageNum}`);
-            // Get all stocks first
             let allStocks = await stockExchangeService_1.stockExchangeService.getAllListedStocks();
-            // Apply filters
             if (sector) {
                 allStocks = allStocks.filter(stock => stock.sector.toLowerCase() === sector.toLowerCase());
             }
             if (exchange) {
                 allStocks = allStocks.filter(stock => stock.exchange.toLowerCase() === exchange.toLowerCase());
             }
-            // Sort
             allStocks.sort((a, b) => {
                 let aValue, bValue;
                 switch (sortBy) {
@@ -373,7 +335,6 @@ class MarketController {
                 }
                 return aValue > bValue ? 1 : -1;
             });
-            // Paginate
             const totalStocks = allStocks.length;
             const paginatedStocks = allStocks.slice(offset, offset + limitNum);
             res.json({

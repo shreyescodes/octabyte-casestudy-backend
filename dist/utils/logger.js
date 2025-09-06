@@ -8,7 +8,6 @@ const winston_1 = __importDefault(require("winston"));
 const path_1 = __importDefault(require("path"));
 const logLevel = process.env.LOG_LEVEL || 'info';
 const nodeEnv = process.env.NODE_ENV || 'development';
-// Define log format
 const logFormat = winston_1.default.format.combine(winston_1.default.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), winston_1.default.format.errors({ stack: true }), winston_1.default.format.json(), winston_1.default.format.printf(({ timestamp, level, message, stack, ...meta }) => {
     let logMessage = `${timestamp} [${level.toUpperCase()}]: ${message}`;
     if (Object.keys(meta).length > 0) {
@@ -19,7 +18,6 @@ const logFormat = winston_1.default.format.combine(winston_1.default.format.time
     }
     return logMessage;
 }));
-// Console format for development
 const consoleFormat = winston_1.default.format.combine(winston_1.default.format.colorize(), winston_1.default.format.timestamp({ format: 'HH:mm:ss' }), winston_1.default.format.printf(({ timestamp, level, message, stack, ...meta }) => {
     let logMessage = `${timestamp} ${level}: ${message}`;
     if (Object.keys(meta).length > 0) {
@@ -30,41 +28,33 @@ const consoleFormat = winston_1.default.format.combine(winston_1.default.format.
     }
     return logMessage;
 }));
-// Create transports
 const transports = [];
-// Console transport for all environments
 transports.push(new winston_1.default.transports.Console({
     level: logLevel,
     format: nodeEnv === 'development' ? consoleFormat : logFormat,
 }));
-// File transports for production
 if (nodeEnv === 'production') {
-    // General log file
     transports.push(new winston_1.default.transports.File({
         filename: path_1.default.join(process.cwd(), 'logs', 'app.log'),
         level: 'info',
         format: logFormat,
-        maxsize: 10 * 1024 * 1024, // 10MB
+        maxsize: 10 * 1024 * 1024,
         maxFiles: 5,
     }));
-    // Error log file
     transports.push(new winston_1.default.transports.File({
         filename: path_1.default.join(process.cwd(), 'logs', 'error.log'),
         level: 'error',
         format: logFormat,
-        maxsize: 10 * 1024 * 1024, // 10MB
+        maxsize: 10 * 1024 * 1024,
         maxFiles: 5,
     }));
 }
-// Create logger instance
 exports.logger = winston_1.default.createLogger({
     level: logLevel,
     format: logFormat,
     transports,
-    // Don't exit on handled exceptions
     exitOnError: false,
 });
-// Handle uncaught exceptions and unhandled rejections
 if (nodeEnv === 'production') {
     exports.logger.exceptions.handle(new winston_1.default.transports.File({
         filename: path_1.default.join(process.cwd(), 'logs', 'exceptions.log'),
@@ -75,7 +65,6 @@ if (nodeEnv === 'production') {
         format: logFormat,
     }));
 }
-// Add request logging helper
 const logRequest = (req, res, responseTime) => {
     const { method, url, ip, headers } = req;
     const { statusCode } = res;
@@ -95,7 +84,6 @@ const logRequest = (req, res, responseTime) => {
     }
 };
 exports.logRequest = logRequest;
-// Add API error logging helper
 const logApiError = (operation, error, context) => {
     exports.logger.error(`API Error in ${operation}`, {
         error: error.message || error,
@@ -104,7 +92,6 @@ const logApiError = (operation, error, context) => {
     });
 };
 exports.logApiError = logApiError;
-// Add market data logging helper
 const logMarketData = (symbol, source, success, data) => {
     const logData = {
         symbol,

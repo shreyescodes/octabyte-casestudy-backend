@@ -13,7 +13,7 @@ import Database from './config/database';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 
 // Middleware
 app.use(helmet());
@@ -361,7 +361,7 @@ const startServer = async () => {
     logger.warn('Server starting without database connection. Some features may not work.');
   }
   
-  const server = app.listen(PORT, () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     logger.info(`Portfolio Dashboard API server running on port ${PORT}`);
     logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info(`Health check: http://localhost:${PORT}/api/health`);

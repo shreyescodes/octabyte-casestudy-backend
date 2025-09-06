@@ -7,20 +7,25 @@
     "rootDir": "./src",
     "strict": false,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+    "forceConsistentCasingInFileNames": false,
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "noImplicitAny": false,
+    "allowJs": true,
+    "checkJs": false,
     "declaration": false,
     "sourceMap": false,
-    "types": []
+    "removeComments": true,
+    "noEmitOnError": false
   },
   "include": [
     "src/**/*"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "**/*.d.ts"
   ]
 }

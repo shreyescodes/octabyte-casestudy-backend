@@ -44,11 +44,8 @@ class GoogleFinanceService {
     constructor() {
         this.baseUrl = 'https://www.google.com/finance/quote';
         this.maxRetries = 3;
-        this.retryDelay = 2000; // 2 seconds
+        this.retryDelay = 2000;
     }
-    /**
-     * Fetch current market price from Google Finance
-     */
     async getCurrentPrice(symbol, exchange = 'NSE') {
         try {
             logger_1.logger.info(`Fetching current price for ${symbol} from Google Finance`);
@@ -65,9 +62,6 @@ class GoogleFinanceService {
             return null;
         }
     }
-    /**
-     * Fetch P/E ratio and earnings data from Google Finance
-     */
     async getFinancialData(symbol, exchange = 'NSE') {
         try {
             logger_1.logger.info(`Fetching financial data for ${symbol} from Google Finance`);
@@ -88,9 +82,6 @@ class GoogleFinanceService {
             return null;
         }
     }
-    /**
-     * Fetch comprehensive market data from Google Finance
-     */
     async getMarketData(symbol, exchange = 'NSE') {
         try {
             logger_1.logger.info(`Fetching market data for ${symbol} from Google Finance`);
@@ -115,18 +106,13 @@ class GoogleFinanceService {
             return null;
         }
     }
-    /**
-     * Fetch market data for multiple symbols in batch
-     */
     async getBatchMarketData(symbols, exchange = 'NSE') {
         logger_1.logger.info(`Fetching batch market data for ${symbols.length} symbols from Google Finance`);
         const results = {};
-        // Process symbols sequentially to avoid being blocked by Google
         for (const symbol of symbols) {
             try {
                 const data = await this.getMarketData(symbol, exchange);
                 results[symbol] = data;
-                // Add delay between requests to be respectful
                 await this.delay(1000);
             }
             catch (error) {
@@ -137,9 +123,6 @@ class GoogleFinanceService {
         logger_1.logger.info(`Completed batch fetch for ${symbols.length} symbols. Success rate: ${Object.values(results).filter(Boolean).length / symbols.length * 100}%`);
         return results;
     }
-    /**
-     * Scrape Google Finance page for stock data
-     */
     async scrapeGoogleFinance(symbol, exchange = 'NSE', attempt = 1) {
         try {
             const url = `${this.baseUrl}/${symbol}:${exchange}`;
@@ -160,7 +143,6 @@ class GoogleFinanceService {
             }
             const $ = cheerio.load(response.data);
             const data = { symbol };
-            // Extract current price
             const priceElement = $('[data-source="BFP"] [jsname="ip4Tqd"]').first();
             if (priceElement.length > 0) {
                 const priceText = priceElement.text().replace(/[₹,$\s]/g, '');
@@ -169,7 +151,6 @@ class GoogleFinanceService {
                     data.currentPrice = price;
                 }
             }
-            // Extract P/E ratio
             const peElement = $('[data-test-id="P/E ratio"] .ZYVHBb').first();
             if (peElement.length > 0) {
                 const peText = peElement.text().replace(/[,\s]/g, '');
@@ -178,7 +159,6 @@ class GoogleFinanceService {
                     data.peRatio = pe;
                 }
             }
-            // Extract EPS (Earnings Per Share)
             const epsElement = $('[data-test-id="EPS"] .ZYVHBb').first();
             if (epsElement.length > 0) {
                 const epsText = epsElement.text().replace(/[₹,$\s]/g, '');
@@ -187,7 +167,6 @@ class GoogleFinanceService {
                     data.earningsPerShare = eps;
                 }
             }
-            // If no data found, try alternative selectors
             if (!data.currentPrice) {
                 const altPriceElement = $('.YMlKec.fxKbKc').first();
                 if (altPriceElement.length > 0) {
@@ -211,18 +190,11 @@ class GoogleFinanceService {
             return null;
         }
     }
-    /**
-     * Utility method to add delays
-     */
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-    /**
-     * Check if Google Finance service is available
-     */
     async isServiceAvailable() {
         try {
-            // Try to fetch a well-known Indian stock to test service availability
             const result = await this.getCurrentPrice('RELIANCE', 'NSE');
             return result !== null;
         }
@@ -231,11 +203,7 @@ class GoogleFinanceService {
             return false;
         }
     }
-    /**
-     * Convert symbol format for different exchanges
-     */
     formatSymbolForExchange(symbol, exchange) {
-        // Handle different symbol formats for different exchanges
         switch (exchange.toUpperCase()) {
             case 'NSE':
                 return symbol.toUpperCase();

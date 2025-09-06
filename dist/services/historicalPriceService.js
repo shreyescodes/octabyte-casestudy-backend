@@ -4,19 +4,14 @@ exports.historicalPriceService = void 0;
 const yahooFinanceService_1 = require("./yahooFinanceService");
 const logger_1 = require("../utils/logger");
 class HistoricalPriceService {
-    /**
-     * Get realistic purchase price using historical data
-     */
     async getRealisticPurchasePrice(symbol) {
         try {
             logger_1.logger.info(`Getting realistic purchase price for ${symbol}`);
-            // Try different time periods to find valid historical data
-            const timePeriodsToTry = [3, 4, 5, 6]; // months ago
+            const timePeriodsToTry = [3, 4, 5, 6];
             for (const monthsAgo of timePeriodsToTry) {
                 try {
                     const historicalPrice = await yahooFinanceService_1.yahooFinanceService.getHistoricalPrice(symbol, monthsAgo);
                     if (historicalPrice && historicalPrice > 0) {
-                        // Also get current price for comparison
                         const currentPrice = await yahooFinanceService_1.yahooFinanceService.getCurrentPrice(symbol);
                         if (currentPrice) {
                             const purchaseDate = new Date();
@@ -39,7 +34,6 @@ class HistoricalPriceService {
                     continue;
                 }
             }
-            // Fallback: Use a more realistic calculation if historical data fails
             logger_1.logger.warn(`No historical data available for ${symbol}, using fallback calculation`);
             return await this.getFallbackPurchasePrice(symbol);
         }
@@ -48,20 +42,14 @@ class HistoricalPriceService {
             return null;
         }
     }
-    /**
-     * Fallback method when historical data is not available
-     */
     async getFallbackPurchasePrice(symbol) {
         try {
             const currentPrice = await yahooFinanceService_1.yahooFinanceService.getCurrentPrice(symbol);
             if (!currentPrice) {
                 return null;
             }
-            // Generate a realistic purchase price within ±30% of current price
-            // This creates a mix of gains and losses
-            const randomFactor = 0.7 + (Math.random() * 0.6); // Range: 0.7 to 1.3
+            const randomFactor = 0.7 + (Math.random() * 0.6);
             const historicalPrice = currentPrice * randomFactor;
-            // Random date between 2-8 months ago
             const monthsAgo = 2 + Math.floor(Math.random() * 6);
             const purchaseDate = new Date();
             purchaseDate.setMonth(purchaseDate.getMonth() - monthsAgo);
@@ -81,15 +69,10 @@ class HistoricalPriceService {
             return null;
         }
     }
-    /**
-     * Detect currency based on symbol and exchange
-     */
     detectCurrency(symbol) {
-        // Indian stocks (NSE/BSE) use INR
         if (symbol.includes('.NS') || symbol.includes('.BO')) {
             return '₹';
         }
-        // Check if it's an Indian stock symbol
         const indianStockSymbols = [
             'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ITC', 'SBIN',
             'BHARTIARTL', 'ICICIBANK', 'HINDUNILVR', 'KOTAKBANK'
@@ -97,47 +80,33 @@ class HistoricalPriceService {
         if (indianStockSymbols.includes(symbol)) {
             return '₹';
         }
-        // Default to USD for international stocks
         return '$';
     }
-    /**
-     * Convert USD to INR if needed (for currency consistency)
-     */
     async convertToINR(usdPrice) {
         try {
-            // Simple conversion rate (in production, you'd use a live forex API)
-            const USD_TO_INR = 83.50; // Approximate rate
+            const USD_TO_INR = 83.50;
             return usdPrice * USD_TO_INR;
         }
         catch (error) {
             logger_1.logger.error('Error converting USD to INR:', error);
-            return usdPrice * 83.50; // Fallback rate
+            return usdPrice * 83.50;
         }
     }
-    /**
-     * Ensure price consistency for Indian stocks
-     */
     async ensureCurrencyConsistency(symbol, price) {
         const currency = this.detectCurrency(symbol);
-        // If it's an Indian stock but price seems to be in USD (< 100), convert it
         if (currency === '₹' && price < 100) {
             logger_1.logger.warn(`Price ${price} for ${symbol} seems to be in USD, converting to INR`);
             return await this.convertToINR(price);
         }
         return price;
     }
-    /**
-     * Get batch historical prices for multiple symbols
-     */
     async getBatchHistoricalPrices(symbols) {
         logger_1.logger.info(`Fetching historical prices for ${symbols.length} symbols`);
         const results = {};
-        // Process sequentially to avoid overwhelming the API
         for (const symbol of symbols) {
             try {
                 const historicalData = await this.getRealisticPurchasePrice(symbol);
                 results[symbol] = historicalData;
-                // Add delay between requests
                 await this.delay(500);
             }
             catch (error) {
@@ -149,15 +118,9 @@ class HistoricalPriceService {
         logger_1.logger.info(`Historical price fetch completed. Success rate: ${successCount}/${symbols.length}`);
         return results;
     }
-    /**
-     * Utility method to add delays
-     */
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-    /**
-     * Generate portfolio statistics for verification
-     */
     generatePortfolioStats(stocksData) {
         const gainers = stocksData.filter(stock => stock.currentPrice > stock.historicalPrice);
         const losers = stocksData.filter(stock => stock.currentPrice < stock.historicalPrice);
@@ -173,6 +136,5 @@ class HistoricalPriceService {
         };
     }
 }
-// Create singleton instance
 exports.historicalPriceService = new HistoricalPriceService();
 exports.default = exports.historicalPriceService;

@@ -53,7 +53,6 @@ class StockService {
         return result.rows[0] || null;
     }
     static async createStock(stockData) {
-        // Calculate derived values
         const investment = stockData.purchasePrice * stockData.quantity;
         const presentValue = stockData.currentMarketPrice * stockData.quantity;
         const gainLoss = presentValue - investment;
@@ -92,7 +91,6 @@ class StockService {
             stockData.latestEarnings || null,
             stockData.sector
         ]);
-        // Recalculate portfolio percentages after adding new stock
         await this.recalculatePortfolioPercentages();
         return result.rows[0];
     }
@@ -100,9 +98,7 @@ class StockService {
         const currentStock = await this.getStockById(id);
         if (!currentStock)
             return null;
-        // Merge current data with updates
         const updatedData = { ...currentStock, ...stockData };
-        // Recalculate derived values if necessary
         if (stockData.purchasePrice !== undefined || stockData.quantity !== undefined) {
             updatedData.investment = updatedData.purchasePrice * updatedData.quantity;
         }
@@ -155,14 +151,12 @@ class StockService {
             updatedData.sector,
             id
         ]);
-        // Recalculate portfolio percentages after updating stock
         await this.recalculatePortfolioPercentages();
         return result.rows[0];
     }
     static async deleteStock(id) {
         const result = await database_1.default.query('DELETE FROM stocks WHERE id = $1', [id]);
         if (result.rowCount > 0) {
-            // Recalculate portfolio percentages after deleting stock
             await this.recalculatePortfolioPercentages();
             return true;
         }
@@ -193,11 +187,9 @@ class StockService {
         return result.rows;
     }
     static async recalculatePortfolioPercentages() {
-        // Get total investment
         const totalResult = await database_1.default.query('SELECT SUM(investment) as total FROM stocks');
         const totalInvestment = totalResult.rows[0]?.total || 0;
         if (totalInvestment > 0) {
-            // Update portfolio percentages
             await database_1.default.query(`
         UPDATE stocks 
         SET portfolio_percentage = (investment / $1) * 100

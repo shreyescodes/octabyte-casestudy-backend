@@ -9,13 +9,9 @@ const logger_1 = require("../utils/logger");
 const database_1 = __importDefault(require("../config/database"));
 const stockService_1 = require("../services/stockService");
 class StockController {
-    /**
-     * Get all stocks with live market data
-     */
     static async getAllStocks(req, res) {
         try {
             logger_1.logger.info('Fetching all stocks with live market data');
-            // Fetch stocks from database
             const result = await database_1.default.query(`
         SELECT id, stock_name as "stockName", purchase_price as "purchasePrice", 
                quantity, investment, portfolio_percentage as "portfolioPercentage",
@@ -26,22 +22,18 @@ class StockController {
         FROM stocks ORDER BY created_at DESC
       `);
             const stocks = [];
-            // Fetch live market data for each stock
             for (const row of result.rows) {
                 const symbol = StockController.extractStockSymbol(row.stockName);
-                // Get live market data
                 logger_1.logger.info(`Fetching live data for ${row.stockName} (${symbol})`);
                 const marketData = await marketDataService_1.default.getMarketData(symbol, row.stockExchangeCode);
                 let currentMarketPrice = parseFloat(row.currentMarketPrice);
                 let peRatio = row.peRatio ? parseFloat(row.peRatio) : undefined;
                 let latestEarnings = row.latestEarnings ? parseFloat(row.latestEarnings) : undefined;
-                // Use live data if available
                 if (marketData) {
                     currentMarketPrice = marketData.currentPrice;
                     peRatio = marketData.peRatio || peRatio;
                     latestEarnings = marketData.latestEarnings || latestEarnings;
                 }
-                // Calculate derived values
                 const investment = parseFloat(row.investment);
                 const presentValue = currentMarketPrice * parseInt(row.quantity);
                 const gainLoss = presentValue - investment;
@@ -81,11 +73,7 @@ class StockController {
             });
         }
     }
-    /**
-     * Extract stock symbol from stock name with proper mapping
-     */
     static extractStockSymbol(stockName) {
-        // Define mapping for common stock names to their trading symbols
         const symbolMapping = {
             'Reliance Industries Ltd': 'RELIANCE.NS',
             'Tata Consultancy Services Ltd': 'TCS.NS',
@@ -98,17 +86,12 @@ class StockController {
             'Hindustan Unilever Ltd': 'HINDUNILVR.NS',
             'Larsen & Toubro Ltd': 'LT.NS'
         };
-        // Check if we have a direct mapping
         if (symbolMapping[stockName]) {
             return symbolMapping[stockName];
         }
-        // Fallback: Extract first word and append .NS for NSE
         const firstWord = stockName.split(' ')[0].toUpperCase();
         return `${firstWord}.NS`;
     }
-    /**
-     * Get stock by ID with live market data
-     */
     static async getStockById(req, res) {
         try {
             const { id } = req.params;
@@ -119,7 +102,6 @@ class StockController {
                 });
                 return;
             }
-            // Fetch stock from database
             const result = await database_1.default.query(`
         SELECT id, stock_name as "stockName", purchase_price as "purchasePrice", 
                quantity, investment, portfolio_percentage as "portfolioPercentage",
@@ -138,7 +120,6 @@ class StockController {
             }
             const row = result.rows[0];
             const symbol = StockController.extractStockSymbol(row.stockName);
-            // Update with live market data
             const marketData = await marketDataService_1.default.getMarketData(symbol, row.stockExchangeCode);
             let currentMarketPrice = parseFloat(row.currentMarketPrice);
             let peRatio = row.peRatio ? parseFloat(row.peRatio) : 0;
@@ -185,13 +166,9 @@ class StockController {
             });
         }
     }
-    /**
-     * Create new stock with live market data
-     */
     static async createStock(req, res) {
         try {
             const stockData = req.body;
-            // Validate required fields
             if (!stockData.stockName || !stockData.purchasePrice || !stockData.quantity) {
                 res.status(400).json({
                     success: false,
@@ -199,10 +176,8 @@ class StockController {
                 });
                 return;
             }
-            // Generate unique ID
             const stockId = (0, uuid_1.v4)();
             const symbol = StockController.extractStockSymbol(stockData.stockName);
-            // Get current market data
             let currentMarketPrice = stockData.purchasePrice;
             let peRatio = 0;
             let latestEarnings = 0;
@@ -221,7 +196,6 @@ class StockController {
             const investment = stockData.purchasePrice * stockData.quantity;
             const presentValue = currentMarketPrice * stockData.quantity;
             const gainLoss = presentValue - investment;
-            // Insert into database
             await database_1.default.query(`
         INSERT INTO stocks (
           id, stock_name, purchase_price, quantity, investment, 
@@ -233,9 +207,7 @@ class StockController {
                 investment, stockData.stockExchangeCode || 'NSE', currentMarketPrice,
                 presentValue, gainLoss, peRatio, latestEarnings, stockData.sector || 'Technology'
             ]);
-            // Recalculate portfolio percentages
             await StockController.recalculatePortfolioPercentages();
-            // Fetch the created stock with updated percentages
             const result = await database_1.default.query(`
         SELECT id, stock_name as "stockName", purchase_price as "purchasePrice", 
                quantity, investment, portfolio_percentage as "portfolioPercentage",
@@ -281,9 +253,6 @@ class StockController {
             });
         }
     }
-    /**
-     * Update stock with live market data
-     */
     static async updateStock(req, res) {
         try {
             const { id } = req.params;
@@ -296,7 +265,6 @@ class StockController {
                 return;
             }
             logger_1.logger.info(`Updating stock ${id} with data:`, updateData);
-            // If market price is being updated, fetch live data
             if (updateData.stockName || updateData.stockExchangeCode) {
                 try {
                     const symbol = updateData.stockName || (await stockService_1.StockService.getStockById(id))?.stockName;
@@ -312,10 +280,8 @@ class StockController {
                 }
                 catch (marketError) {
                     logger_1.logger.warn(`Failed to fetch live market data for stock update: ${marketError}`);
-                    // Continue with update even if market data fetch fails
                 }
             }
-            // Update the stock using the service
             const updatedStock = await stockService_1.StockService.updateStock(id, updateData);
             if (!updatedStock) {
                 res.status(404).json({
@@ -340,9 +306,6 @@ class StockController {
             });
         }
     }
-    /**
-     * Delete stock holding from portfolio
-     */
     static async deleteStock(req, res) {
         try {
             const { id } = req.params;
@@ -353,7 +316,6 @@ class StockController {
                 });
                 return;
             }
-            // First, check if the stock exists
             const checkResult = await database_1.default.query(`
         SELECT id, stock_name as "stockName", quantity, investment
         FROM stocks WHERE id = $1
@@ -366,9 +328,7 @@ class StockController {
                 return;
             }
             const stock = checkResult.rows[0];
-            // Delete the stock from database
             await database_1.default.query('DELETE FROM stocks WHERE id = $1', [id]);
-            // Recalculate portfolio percentages for remaining stocks
             await StockController.recalculatePortfolioPercentages();
             logger_1.logger.info(`Deleted stock holding: ${stock.stockName} (Qty: ${stock.quantity}, Investment: ₹${stock.investment})`);
             res.json({
@@ -391,16 +351,11 @@ class StockController {
             });
         }
     }
-    /**
-     * Recalculate portfolio percentages after stock deletion
-     */
     static async recalculatePortfolioPercentages() {
         try {
-            // Get total investment
             const totalResult = await database_1.default.query('SELECT SUM(investment) as total FROM stocks');
             const totalInvestment = parseFloat(totalResult.rows[0]?.total || '0');
             if (totalInvestment > 0) {
-                // Update each stock's portfolio percentage
                 await database_1.default.query(`
           UPDATE stocks 
           SET portfolio_percentage = ROUND((investment / $1 * 100)::numeric, 2),
@@ -413,9 +368,6 @@ class StockController {
             logger_1.logger.error('Error recalculating portfolio percentages:', error);
         }
     }
-    /**
-     * Search stocks by name for autocomplete
-     */
     static async searchStocks(req, res) {
         try {
             const { q } = req.query;
@@ -427,7 +379,6 @@ class StockController {
                 return;
             }
             const query = q.toLowerCase().trim();
-            // Common Indian stocks with their symbols for autocomplete
             const indianStocks = [
                 { name: 'Reliance Industries Ltd', symbol: 'RELIANCE.NS', exchange: 'NSE', sector: 'Energy' },
                 { name: 'Tata Consultancy Services Ltd', symbol: 'TCS.NS', exchange: 'NSE', sector: 'Technology' },
@@ -455,9 +406,8 @@ class StockController {
                 { name: 'Power Grid Corporation of India Ltd', symbol: 'POWERGRID.NS', exchange: 'NSE', sector: 'Utilities' },
                 { name: 'Nestle India Ltd', symbol: 'NESTLEIND.NS', exchange: 'NSE', sector: 'Consumer Goods' }
             ];
-            // Filter stocks based on search query
             const filteredStocks = indianStocks.filter(stock => stock.name.toLowerCase().includes(query) ||
-                stock.symbol.toLowerCase().includes(query)).slice(0, 10); // Limit to 10 results
+                stock.symbol.toLowerCase().includes(query)).slice(0, 10);
             logger_1.logger.info(`Stock search for "${query}" returned ${filteredStocks.length} results`);
             res.json({
                 success: true,
@@ -474,9 +424,6 @@ class StockController {
             });
         }
     }
-    /**
-     * Refresh market data for a specific stock
-     */
     static async refreshStockData(req, res) {
         try {
             const { id } = req.params;
@@ -487,7 +434,6 @@ class StockController {
                 });
                 return;
             }
-            // Get stock from database
             const result = await database_1.default.query(`
         SELECT id, stock_name as "stockName", stock_exchange_code as "stockExchangeCode"
         FROM stocks WHERE id = $1
@@ -501,10 +447,8 @@ class StockController {
             }
             const row = result.rows[0];
             const symbol = StockController.extractStockSymbol(row.stockName);
-            // Force refresh market data
             const marketData = await marketDataService_1.default.refreshSymbol(symbol, row.stockExchangeCode);
             if (marketData) {
-                // Update database with fresh market data
                 await database_1.default.query(`
           UPDATE stocks 
           SET current_market_price = $1, pe_ratio = $2, latest_earnings = $3, updated_at = NOW()

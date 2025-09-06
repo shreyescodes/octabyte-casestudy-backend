@@ -5,7 +5,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const database_1 = __importDefault(require("../config/database"));
 const realTimeDataService_1 = require("../services/realTimeDataService");
-// Dynamic sample stocks - completely dynamic, market data and purchase prices fetched live
 const sampleStockSymbols = [
     {
         symbol: "RELIANCE",
@@ -46,7 +45,6 @@ const sampleStockSymbols = [
 async function seedDatabase() {
     try {
         console.log('Starting database seeding with live market data...');
-        // Clear existing data
         await database_1.default.query('DELETE FROM stocks');
         await database_1.default.query('DELETE FROM portfolio_snapshots');
         console.log('🔄 Fetching live market data for sample stocks...');
@@ -54,22 +52,18 @@ async function seedDatabase() {
         let totalInvestment = 0;
         let totalPresentValue = 0;
         let totalGainLoss = 0;
-        // Fetch REAL-TIME market data with realistic purchase scenarios
         console.log('🔴 Fetching LIVE real-time market data...');
         const realTimeStockData = await realTimeDataService_1.realTimeDataService.getBatchRealTimeData(sampleStockSymbols.map(stock => ({
             symbol: stock.symbol,
             stockName: stock.stockName,
             exchange: stock.stockExchangeCode
         })));
-        // Process each stock with real-time data
         for (const realTimeData of realTimeStockData) {
             console.log(`📊 Processing ${realTimeData.stockName} (${realTimeData.symbol})...`);
             try {
-                // Find the corresponding stock info
                 const stockInfo = sampleStockSymbols.find(s => s.symbol === realTimeData.symbol);
                 if (!stockInfo)
                     continue;
-                // Calculate derived values with real-time data
                 const investment = realTimeData.purchasePrice * stockInfo.quantity;
                 const presentValue = realTimeData.currentPrice * stockInfo.quantity;
                 const gainLoss = presentValue - investment;
@@ -106,7 +100,6 @@ async function seedDatabase() {
             }
         }
         console.log('💾 Inserting stocks into database...');
-        // Insert stocks with live data and calculated portfolio percentages
         for (const stock of stocksWithLiveData) {
             const portfolioPercentage = totalInvestment > 0 ? (stock.investment / totalInvestment) * 100 : 0;
             await database_1.default.query(`
@@ -130,12 +123,10 @@ async function seedDatabase() {
                 stock.sector
             ]);
         }
-        // Create initial portfolio snapshot
         await database_1.default.query(`
       INSERT INTO portfolio_snapshots (total_investment, total_present_value, total_gain_loss)
       VALUES ($1, $2, $3)
     `, [totalInvestment, totalPresentValue, totalGainLoss]);
-        // Generate real-time portfolio statistics
         const portfolioStats = realTimeDataService_1.realTimeDataService.getPortfolioStatistics(stocksWithLiveData.map(stock => ({
             symbol: stock.symbol,
             stockName: stock.stockName || stock.symbol,
@@ -151,7 +142,6 @@ async function seedDatabase() {
             gainLoss: stock.gainLoss,
             gainLossPercent: ((stock.gainLoss / (stock.purchasePrice * stock.quantity)) * 100)
         })));
-        // Get market status
         const marketStatus = await realTimeDataService_1.realTimeDataService.getMarketStatus();
         console.log('✅ Database seeding completed successfully with LIVE REAL-TIME data!');
         console.log(`📈 Portfolio Summary:`);

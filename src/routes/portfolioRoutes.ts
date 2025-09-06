@@ -1,4 +1,4 @@
-import express from 'express';
+const express = require('express');
 import PortfolioController from '../controllers/portfolioController';
 
 const router = express.Router();
